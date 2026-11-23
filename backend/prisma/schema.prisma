@@ -1,0 +1,97 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  STAFF
+  CLIENT
+}
+
+enum ReservationStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+enum OrderStatus {
+  NEW
+  PREPARING
+  READY
+  PAID
+  CANCELLED
+}
+
+model User {
+  id           Int           @id @default(autoincrement())
+  name         String
+  email        String        @unique
+  password     String
+  role         Role          @default(CLIENT)
+  reservations Reservation[]
+  orders       Order[]
+  createdAt    DateTime      @default(now())
+}
+
+model RestaurantTable {
+  id           Int           @id @default(autoincrement())
+  number       Int           @unique
+  seats        Int
+  description  String?
+  active       Boolean       @default(true)
+  reservations Reservation[]
+}
+
+model MenuItem {
+  id          Int       @id @default(autoincrement())
+  name        String
+  description String?
+  category    String
+  price       Decimal   @db.Decimal(10, 2)
+  available   Boolean   @default(true)
+  imageUrl    String?
+  createdAt   DateTime  @default(now())
+  orderItems  OrderItem[]
+}
+
+model Reservation {
+  id        Int               @id @default(autoincrement())
+  userId    Int
+  tableId   Int
+  startAt   DateTime
+  endAt     DateTime
+  guests    Int
+  comment   String?
+  status    ReservationStatus @default(PENDING)
+  createdAt DateTime          @default(now())
+  user      User              @relation(fields: [userId], references: [id])
+  table     RestaurantTable   @relation(fields: [tableId], references: [id])
+  @@index([tableId, startAt, endAt])
+}
+
+model Order {
+  id        Int         @id @default(autoincrement())
+  userId    Int
+  status    OrderStatus @default(NEW)
+  total     Decimal     @db.Decimal(10, 2)
+  note      String?
+  createdAt DateTime    @default(now())
+  user      User        @relation(fields: [userId], references: [id])
+  items     OrderItem[]
+}
+
+model OrderItem {
+  id         Int      @id @default(autoincrement())
+  orderId    Int
+  menuItemId Int
+  quantity   Int
+  unitPrice  Decimal  @db.Decimal(10, 2)
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItem   MenuItem @relation(fields: [menuItemId], references: [id])
+}
